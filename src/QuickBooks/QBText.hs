@@ -12,7 +12,7 @@ import           Data.String
 
 -- | Text that has been filtered to be valid in all quickbooks context
 newtype QBText = QBText {unQBText :: Text}
-  deriving (Eq, Show, IsString)
+  deriving (Eq, Ord, Show, IsString)
 
 instance ToJSON QBText where
     toJSON (QBText txt) = toJSON txt
