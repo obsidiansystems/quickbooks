@@ -477,7 +477,7 @@ data PhysicalAddress = PhysicalAddress
   , physicalAddressLine5                  :: !(Maybe Text)
   , physicalAddressCity                   :: !Text
   , physicalAddressCountry                :: !(Maybe Text)
-  , physicalAddressCountrySubDivisionCode :: !Text
+  , physicalAddressCountrySubDivisionCode :: !(Maybe Text)
   , physicalAddressPostalCode             :: !Text
   , physicalAddressNote                   :: !(Maybe Text)
   , physicalAddressLat                    :: !(Maybe Text)
