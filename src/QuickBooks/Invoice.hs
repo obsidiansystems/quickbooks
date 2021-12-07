@@ -257,14 +257,11 @@ postInvoiceOAuth2 :: APIEnv
 postInvoiceOAuth2 tok invoice = do
   let apiConfig = ?apiConfig
   let eitherQueryURI = parseURI strictURIParserOptions . pack $ [i|#{invoiceURITemplate apiConfig}|]
-  -- Made for logging
-  req' <- parseUrlThrow $ escapeURIString isUnescapedInURI [i|#{invoiceURITemplate apiConfig}|]
   case eitherQueryURI of
     Left err -> return (Left . show $ err)
     Right queryURI -> do
       -- Make the call
       eitherResponse <- qbAuthPostBS ?manager tok queryURI invoice
-      logAPICall req'
       case eitherResponse of
         (Left err) -> return (Left . show $ err)
         (Right resp) -> do
