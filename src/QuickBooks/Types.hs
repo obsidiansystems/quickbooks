@@ -28,7 +28,7 @@ module QuickBooks.Types where
 import           Control.Applicative ((<$>), (<*>), (<|>))
 import           Control.Monad       (mzero)
 import           Data.Aeson          (FromJSON (..), ToJSON(..), Value (Object),
-                                      (.:), object, (.=))
+                                      (.:), object, withObject, (.=))
 import           Data.Aeson.TH       (Options (fieldLabelModifier, omitNothingFields),
                                       defaultOptions, deriveJSON)
 import           Data.ByteString     (ByteString)
@@ -119,6 +119,7 @@ type NetworkEnv = ( ?manager :: Manager
 
 data OAuthTokens = OAuth1 OAuthToken
                  | OAuth2 OAuth2.AccessToken
+                 deriving (Show, Eq)
 
 
 data OAuthToken = OAuthToken
@@ -562,7 +563,7 @@ data Invoice = Invoice
   , invoiceLine                  :: ![Line]
   , invoiceTxnTaxDetail          :: !(Maybe TxnTaxDetail)
   , invoiceCustomerRef           :: !CustomerRef
-  , invoiceCustomerMemo          :: !(Maybe QBText)
+  , invoiceCustomerMemo          :: !(Maybe (QBValue QBText))
   , invoiceBillAddr              :: !(Maybe BillAddr)
   , invoiceShipAddr              :: !(Maybe ShipAddr)
   , invoiceClassRef              :: !(Maybe ClassRef)
@@ -588,6 +589,15 @@ data Invoice = Invoice
   , invoiceSparse                :: !(Maybe Bool)
   }
   deriving (Show, Eq, Ord)
+
+data QBValue a = QBValue { unQBValue :: a }
+  deriving (Show, Eq, Ord)
+
+instance ToJSON a => ToJSON (QBValue a) where
+  toJSON (QBValue a) = object ["value" .= a]
+
+instance FromJSON a => FromJSON (QBValue a) where
+  parseJSON = withObject "QBValue" $ \v -> QBValue <$> v .: "value"
 
 -- | Create an 'Invoice' with the minimum elements.
 --
