@@ -25,6 +25,7 @@ import qualified Data.ByteString.Char8 as BS
 
 import QuickBooks.Types (APIConfig(..), Logger)
 
+{-# NOINLINE apiLogger #-}
 apiLogger :: IORef Logger
 apiLogger = unsafePerformIO $ newIORef =<< newStdoutLoggerSet 0
 
