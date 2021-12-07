@@ -88,7 +88,7 @@ qbAuthGetBS = OAuth2.authGetBS
 
 -- | Conduct POST request for Quickbooks.
 
-qbAuthPostBS :: ToJSON a
+qbAuthPostBS :: (ToJSON a, ?logger::Logger)
              => Manager
              -> OAuth2.AccessToken
              -> URI
@@ -105,6 +105,7 @@ qbAuthPostBS manager tok url pb = do
             , (HT.hAuthorization, "Bearer " <> encodeUtf8 (OAuth2.atoken tok))
             ] <> requestHeaders rawReq
         }
+  logAPICall' req
   rsp <- httpLbs req manager
   pure $ if HT.statusIsSuccessful $ responseStatus rsp
     then Right $ responseBody rsp
