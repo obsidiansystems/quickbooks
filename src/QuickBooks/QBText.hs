@@ -8,11 +8,10 @@ module QuickBooks.QBText ( QBText
 import           Data.Text
 import qualified Data.List.Utils as L
 import           Data.Aeson
-import           Data.String
 
 -- | Text that has been filtered to be valid in all quickbooks context
 newtype QBText = QBText {unQBText :: Text}
-  deriving (Eq, Ord, Show, IsString)
+  deriving (Eq, Ord, Show)
 
 instance ToJSON QBText where
     toJSON (QBText txt) = toJSON txt
