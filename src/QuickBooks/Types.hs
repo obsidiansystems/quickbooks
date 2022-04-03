@@ -579,6 +579,8 @@ data Invoice = Invoice
   , invoicePrintStatus           :: !(Maybe QBText)
   , invoiceEmailStatus           :: !(Maybe QBText)
   , invoiceBillEmail             :: !(Maybe EmailAddress)
+  , invoiceBillEmailCc           :: !(Maybe EmailAddress)
+  , invoiceBillEmailBcc          :: !(Maybe EmailAddress)
   , invoiceDeliveryInfo          :: !(Maybe DeliveryInfo)
   , invoiceBalance               :: !(Maybe Double)
   , invoiceDepositToAccountRef   :: !(Maybe DepositToAccountRef)
@@ -628,6 +630,8 @@ defaultInvoice lines customerRef =
           lines
           Nothing
           customerRef
+          Nothing
+          Nothing
           Nothing
           Nothing
           Nothing

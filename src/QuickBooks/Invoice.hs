@@ -79,7 +79,7 @@ readInvoiceRequestOAuth :: APIEnv
                    -> IO (Either String (QuickBooksResponse Invoice))
 readInvoiceRequestOAuth tok iId = do
   let apiConfig = ?apiConfig
-  req  <- oauthSignRequest tok =<< parseUrlThrow (escapeURIString isUnescapedInURI [i|#{invoiceURITemplate apiConfig}#{unInvoiceId iId}|])
+  req  <- oauthSignRequest tok =<< parseUrlThrow (escapeURIString isUnescapedInURI [i|#{invoiceURITemplate apiConfig}#{unInvoiceId iId}?minorversion=63|])
   let oauthHeaders = requestHeaders req
   let req' = req{method = "GET", requestHeaders = oauthHeaders ++ [(hAccept, "application/json")]}
   resp <-  httpLbs req' ?manager
@@ -93,9 +93,9 @@ readInvoiceRequestOAuth2 :: APIEnv
                    -> IO (Either String (QuickBooksResponse Invoice))
 readInvoiceRequestOAuth2 tok iId = do
   let apiConfig = ?apiConfig
-  let eitherQueryURI = parseURI strictURIParserOptions . pack $ [i|#{invoiceURITemplate apiConfig}#{unInvoiceId iId}|]
+  let eitherQueryURI = parseURI strictURIParserOptions . pack $ [i|#{invoiceURITemplate apiConfig}#{unInvoiceId iId}?minorversion=63|]
   -- Made for logging
-  req' <- parseUrlThrow (escapeURIString isUnescapedInURI [i|#{invoiceURITemplate apiConfig}#{unInvoiceId iId}|])
+  req' <- parseUrlThrow (escapeURIString isUnescapedInURI [i|#{invoiceURITemplate apiConfig}#{unInvoiceId iId}?minorversion=63|])
   case eitherQueryURI of
     Left err -> return (Left . show $ err)
     Right queryURI -> do
@@ -238,7 +238,7 @@ postInvoiceOAuth :: APIEnv
             -> IO (Either String (QuickBooksResponse Invoice))
 postInvoiceOAuth tok invoice = do
   let apiConfig = ?apiConfig
-  req <- parseUrlThrow $ escapeURIString isUnescapedInURI [i|#{invoiceURITemplate apiConfig}|]
+  req <- parseUrlThrow $ escapeURIString isUnescapedInURI [i|#{invoiceURITemplate apiConfig}?minorversion=63|]
   req' <- oauthSignRequest tok req{ method         = "POST"
                                   , requestBody    = RequestBodyLBS $ encode invoice
                                   , requestHeaders = [ (hAccept, "application/json")
@@ -256,7 +256,7 @@ postInvoiceOAuth2 :: APIEnv
             -> IO (Either String (QuickBooksResponse Invoice))
 postInvoiceOAuth2 tok invoice = do
   let apiConfig = ?apiConfig
-  let eitherQueryURI = parseURI strictURIParserOptions . pack $ [i|#{invoiceURITemplate apiConfig}|]
+  let eitherQueryURI = parseURI strictURIParserOptions . pack $ [i|#{invoiceURITemplate apiConfig}?minorversion=63|]
   case eitherQueryURI of
     Left err -> return (Left . show $ err)
     Right queryURI -> do
