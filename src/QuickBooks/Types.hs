@@ -41,6 +41,7 @@ import           System.Log.FastLogger (LoggerSet)
 import           Network.HTTP.Client   (Manager)
 import           QuickBooks.QBText
 import qualified Network.OAuth.OAuth2            as OAuth2
+import           Data.List.NonEmpty (NonEmpty (..))
 type Logger = LoggerSet
 
 type CallbackURL = String
@@ -560,7 +561,7 @@ data Invoice = Invoice
   , invoiceExchangeRate          :: !(Maybe Double) -- Non-US
   , invoicePrivateNote           :: !(Maybe QBText)
   , invoiceLinkedTxn             :: !(Maybe [LinkedTxn])
-  , invoiceLine                  :: ![Line]
+  , invoiceLine                  :: !(NonEmpty Line)
   , invoiceTxnTaxDetail          :: !(Maybe TxnTaxDetail)
   , invoiceCustomerRef           :: !CustomerRef
   , invoiceCustomerMemo          :: !(Maybe (QBValue QBText))
@@ -611,10 +612,9 @@ instance FromJSON a => FromJSON (QBValue a) where
 --
 -- >>> let anInvoice = defaultInvoice [aSalesItemLine] customer21
 
-defaultInvoice :: [Line]      -- ^ The line items of a transaction
+defaultInvoice :: NonEmpty Line      -- ^ The line items of a transaction
                -> CustomerRef -- ^ Reference to a customer or a job
                -> Invoice
-defaultInvoice [] _ = error "Bad invoice"
 defaultInvoice lines customerRef =
   Invoice Nothing
           Nothing
