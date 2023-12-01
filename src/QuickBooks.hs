@@ -1,6 +1,7 @@
 {-# LANGUAGE ImplicitParams    #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeFamilies      #-}
+{-# LANGUAGE RankNTypes        #-}
 
 ------------------------------------------------------------------------------
 -- |
@@ -92,6 +93,8 @@ module QuickBooks
   , queryCategoryCount'
   , queryMaxCategoriesFrom
   , queryMaxCategoriesFrom'
+  
+  , withQuickBooksApiEnv
   ) where
 
 import QuickBooks.Authentication
@@ -694,6 +697,18 @@ queryQuickBooks' apiConfig appConfig tokens' query = do
     QueryCategory queryCategoryName     -> queryCategoryRequest tokens' queryCategoryName
     QueryCountCategory                  -> countCategoryRequest tokens'
     QueryMaxCategoriesFrom startIndex   -> queryMaxCategoryRequest tokens' startIndex
+
+withQuickBooksApiEnv :: OAuthTokens -> (APIEnv => IO a) -> IO a
+withQuickBooksApiEnv tok query = do
+  apiConfig <- readAPIConfig
+  appConfig <- readAppConfig
+  manager   <- newManager tlsManagerSettings
+  logger    <- getLogger apiLogger
+  let ?appConfig = appConfig
+  let ?apiConfig = apiConfig
+  let ?manager   = manager
+  let ?logger    = logger
+  query
 
 queryQuickBooksOAuth :: Maybe OAuthToken
                      -> QuickBooksOAuthQuery a

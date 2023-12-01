@@ -33,6 +33,7 @@ module QuickBooks.Authentication
   , disconnectRequest
   , qbAuthGetBS
   , qbAuthPostBS
+  , qbAuthPostBS'
   , fetchAccessToken
   , readOAuth2Config
   , makeOAuth2
@@ -94,13 +95,22 @@ qbAuthPostBS :: (ToJSON a, ?logger::Logger)
              -> URI
              -> a
              -> IO (Either BSL.ByteString BSL.ByteString)
-qbAuthPostBS manager tok url pb = do
+qbAuthPostBS manager tok url = qbAuthPostBS' manager tok url "application/json" . RequestBodyBS . BSL.toStrict . encode
+
+qbAuthPostBS' :: (?logger::Logger)
+             => Manager
+             -> OAuth2.AccessToken
+             -> URI
+             -> ByteString
+             -> RequestBody
+             -> IO (Either BSL.ByteString BSL.ByteString)
+qbAuthPostBS' manager tok url contentType pb = do
   rawReq <- OAuth2.uriToRequest url
   let req = rawReq
-        { requestBody = RequestBodyBS $ BSL.toStrict $ encode pb
+        { requestBody = pb
         , method = "POST"
         , requestHeaders =
-            [ (HT.hContentType,"application/json")
+            [ (HT.hContentType, contentType)
             , (HT.hAccept,"application/json")
             , (HT.hAuthorization, "Bearer " <> encodeUtf8 (OAuth2.atoken tok))
             ] <> requestHeaders rawReq

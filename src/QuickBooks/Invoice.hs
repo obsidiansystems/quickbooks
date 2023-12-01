@@ -1,11 +1,12 @@
+{-# LANGUAGE ConstraintKinds   #-}
+{-# LANGUAGE DeriveGeneric     #-}
 {-# LANGUAGE ImplicitParams    #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE QuasiQuotes       #-}
-{-# LANGUAGE RecordWildCards   #-}
-{-# LANGUAGE ConstraintKinds   #-}
-{-# LANGUAGE TypeOperators     #-}
-{-# LANGUAGE RankNTypes        #-}
 {-# LANGUAGE PolyKinds         #-}
+{-# LANGUAGE QuasiQuotes       #-}
+{-# LANGUAGE RankNTypes        #-}
+{-# LANGUAGE RecordWildCards   #-}
+{-# LANGUAGE TypeOperators     #-}
 ------------------------------------------------------------------------------
 -- |
 -- Module      : QuickBooks.Requests
@@ -26,6 +27,7 @@ module QuickBooks.Invoice
  , updateInvoiceRequest
  , deleteInvoiceRequest
  , sendInvoiceRequest
+ , uploadAttachmentToInvoice
  ) where
 
 import qualified Network.OAuth.OAuth2      as OAuth2
@@ -33,7 +35,7 @@ import qualified Text.Email.Validate       as Email (EmailAddress, toByteString)
 
 import           Data.ByteString.Char8
 import qualified Data.ByteString.Lazy
-import           Data.Aeson                (encode, eitherDecode, object, Value(String))
+import           Data.Aeson                (encode, eitherDecode, object, Value(String), ToJSON (..), FromJSON, (.=))
 import           Data.String.Interpolate   (i)
 import           Network.HTTP.Client       (httpLbs
                                            ,parseUrlThrow
@@ -49,6 +51,10 @@ import           QuickBooks.Authentication
 import           QuickBooks.Types
 
 import QuickBooks.Logging  (logAPICall)
+import Network.HTTP.Client.MultipartFormData
+import Data.Text (Text)
+import GHC.Generics
+import Data.Text.Encoding
 
 -- | Create an invoice.
 createInvoiceRequest :: APIEnv
@@ -262,6 +268,52 @@ postInvoiceOAuth2 tok invoice = do
     Right queryURI -> do
       -- Make the call
       eitherResponse <- qbAuthPostBS ?manager tok queryURI invoice
+      case eitherResponse of
+        (Left err) -> return (Left . show $ err)
+        (Right resp) -> do
+          return $ eitherDecode resp
+
+uploadURITemplate :: APIConfig -> String
+uploadURITemplate APIConfig{..} = [i|https://#{hostname}/v3/company/#{companyId}/upload|]
+
+uploadAttachmentToInvoice
+  :: APIEnv
+  => OAuth2.AccessToken
+  -> FilePath
+  -> ByteString
+  -> Bool
+  -> ByteString
+  -> InvoiceId -- NOTE: Attachments can be uploaded to things other than invoices, but we don't have a type for that yet
+  -> IO (Either String Value)
+uploadAttachmentToInvoice tok fileName mimeType includeOnSend fileData invoiceId = do
+  let apiConfig = ?apiConfig
+  let eitherUploadURI = parseURI strictURIParserOptions . pack $ [i|#{uploadURITemplate apiConfig}?minorversion=63|]
+  case eitherUploadURI of
+    Left err -> return (Left . show $ err)
+    Right uploadURI -> do
+      boundary <- webkitBoundary
+      let metadata = Data.ByteString.Lazy.toStrict $ encode $ object
+            [ "FileName" .= fileName
+            , "ContentType" .= decodeUtf8 mimeType
+            , "AttachableRef" .=
+              [ object
+                [ "EntityRef" .= object
+                  [ "type" .= ("Invoice" :: Text)
+                  , "value" .= invoiceId
+                  ]
+                , "IncludeOnSend" .= includeOnSend
+                ]
+              ]
+            ]
+      body <- renderParts boundary
+        [ partBS "file_metadata_0" metadata `addPartHeaders`
+          [ ("Content-Type", "application/json")
+          ]
+        , partFileRequestBody "file_content_0" fileName (RequestBodyBS fileData) `addPartHeaders`
+          [ ("Content-Type", mimeType)
+          ]
+        ]
+      eitherResponse <- qbAuthPostBS' ?manager tok uploadURI ("multipart/form-data; boundary=" <> boundary) body
       case eitherResponse of
         (Left err) -> return (Left . show $ err)
         (Right resp) -> do
