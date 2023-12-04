@@ -7,6 +7,7 @@
 {-# LANGUAGE RankNTypes        #-}
 {-# LANGUAGE RecordWildCards   #-}
 {-# LANGUAGE TypeOperators     #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 ------------------------------------------------------------------------------
 -- |
 -- Module      : QuickBooks.Requests
@@ -28,6 +29,7 @@ module QuickBooks.Invoice
  , deleteInvoiceRequest
  , sendInvoiceRequest
  , uploadAttachmentToInvoice
+ , getInvoiceNumbersWithPrefix
  ) where
 
 import qualified Network.OAuth.OAuth2      as OAuth2
@@ -35,7 +37,8 @@ import qualified Text.Email.Validate       as Email (EmailAddress, toByteString)
 
 import           Data.ByteString.Char8
 import qualified Data.ByteString.Lazy
-import           Data.Aeson                (encode, eitherDecode, object, Value(String), ToJSON (..), FromJSON, (.=))
+import           Data.Aeson                (encode, eitherDecode, object, Value(String), ToJSON (..), FromJSON, (.=), (.:))
+import           Data.Aeson.Types (parseEither, withObject)
 import           Data.String.Interpolate   (i)
 import           Network.HTTP.Client       (httpLbs
                                            ,parseUrlThrow
@@ -44,17 +47,22 @@ import           Network.HTTP.Client       (httpLbs
                                            ,Response(responseBody))
 import           Network.HTTP.Types.Header (hAccept,hContentType)
 import           Network.URI               ( escapeURIString
-                                           , isUnescapedInURI)
+                                           , isUnescapedInURI
+                                           , isUnescapedInURIComponent
+                                           )
 import           URI.ByteString
 
 import           QuickBooks.Authentication
 import           QuickBooks.Types
 
+import Control.Monad
 import QuickBooks.Logging  (logAPICall)
 import Network.HTTP.Client.MultipartFormData
 import Data.Text (Text)
 import GHC.Generics
 import Data.Text.Encoding
+import Data.Set (Set)
+import qualified Data.Set as Set
 
 -- | Create an invoice.
 createInvoiceRequest :: APIEnv
@@ -318,3 +326,40 @@ uploadAttachmentToInvoice tok fileName mimeType includeOnSend fileData invoiceId
         (Left err) -> return (Left . show $ err)
         (Right resp) -> do
           return $ eitherDecode resp
+
+--TODO: Make this work if there is a large number of results
+getInvoiceNumbersWithPrefix
+  :: APIEnv
+  => OAuth2.AccessToken
+  -> Text -- Should only contain characters that are legal in invoice IDs
+  -> IO (Either String (Set Text))
+getInvoiceNumbersWithPrefix tok prefix = do
+  let apiConfig = ?apiConfig
+  let query = [i|SELECT DocNumber FROM Invoice WHERE DocNumber LIKE '#{prefix}%' ORDERBY DocNumber STARTPOSITION 1 MAXRESULTS 1000|]
+  let uriComponent = escapeURIString isUnescapedInURIComponent [i|#{query}|]
+  let eitherQueryURI = parseURI strictURIParserOptions . pack $ [i|#{queryURITemplate apiConfig}#{uriComponent}|]
+  -- Made for providing an error log
+  req' <- parseUrlThrow [i|#{queryURITemplate apiConfig}#{uriComponent}|]
+  case eitherQueryURI of
+    Left err -> pure $ Left $ show err
+    Right queryURI -> do
+      -- Make the call
+      eitherResponse <- qbAuthGetBS ?manager tok queryURI
+      logAPICall req'
+      case eitherResponse of
+        Left err -> pure $ Left $ show err
+        Right resp -> pure $ case eitherDecode resp of
+          Left err -> Left err
+          Right v -> flip parseEither v $ withObject "QuickBooks Query" $ \o -> do
+            rVal <- o .: "QueryResponse"
+            let parseQueryResponse rObj = do
+                  invoices :: [Value] <- rObj .: "Invoice"
+                  docNumbers <- forM invoices $ withObject "sparse Invoice" $ \invoice -> do
+                    invoice .: "DocNumber"
+                  pure $ Set.fromList docNumbers
+            withObject "QueryResponse" parseQueryResponse rVal
+
+-- Template for queries
+queryURITemplate :: APIConfig -> String
+queryURITemplate APIConfig{..} =
+  [i|https://#{hostname}/v3/company/#{companyId}/query?query=|]

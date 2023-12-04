@@ -78,6 +78,7 @@ library
                          -- https://github.com/bos/aeson/issues/293
                          -- is fixed.
                        , aeson
+                       , containers
                        , hoauth2 >= 1.16.0
                        , authenticate-oauth
                        , bytestring
