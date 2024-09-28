@@ -37,7 +37,7 @@ import qualified Text.Email.Validate       as Email (EmailAddress, toByteString)
 
 import           Data.ByteString.Char8
 import qualified Data.ByteString.Lazy
-import           Data.Aeson                (encode, eitherDecode, object, Value(String), ToJSON (..), FromJSON, (.=), (.:))
+import           Data.Aeson                (encode, eitherDecode, object, Value(String), ToJSON (..), FromJSON, (.=), (.:), (.:?))
 import           Data.Aeson.Types (parseEither, withObject)
 import           Data.String.Interpolate   (i)
 import           Network.HTTP.Client       (httpLbs
@@ -63,6 +63,7 @@ import GHC.Generics
 import Data.Text.Encoding
 import Data.Set (Set)
 import qualified Data.Set as Set
+import Data.Maybe (fromMaybe)
 
 -- | Create an invoice.
 createInvoiceRequest :: APIEnv
@@ -353,7 +354,7 @@ getInvoiceNumbersWithPrefix tok prefix = do
           Right v -> flip parseEither v $ withObject "QuickBooks Query" $ \o -> do
             rVal <- o .: "QueryResponse"
             let parseQueryResponse rObj = do
-                  invoices :: [Value] <- rObj .: "Invoice"
+                  invoices :: [Value] <- fmap (fromMaybe []) $ rObj .:? "Invoice"
                   docNumbers <- forM invoices $ withObject "sparse Invoice" $ \invoice -> do
                     invoice .: "DocNumber"
                   pure $ Set.fromList docNumbers
