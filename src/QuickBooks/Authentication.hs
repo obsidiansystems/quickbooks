@@ -78,13 +78,13 @@ import           QuickBooks.Types
 import qualified Network.OAuth.OAuth2    as OAuth2
 import qualified Network.OAuth.OAuth2.HttpClient as OAuth2
 import qualified Network.HTTP.Types      as HT
-
+import           Control.Monad.Except
 
 
 qbAuthGetBS :: Manager -> OAuth2.AccessToken
             -> URI
             -> IO (Either BSL.ByteString BSL.ByteString)
-qbAuthGetBS = OAuth2.authGetBS
+qbAuthGetBS mgr token uri = runExceptT $ OAuth2.authGetBS mgr token uri
 
 
 -- | Conduct POST request for Quickbooks.
@@ -129,7 +129,7 @@ fetchAccessToken oauth2Config = do
    mgr <- TLS.getGlobalManager
    let newOAuth2 = makeOAuth2 oauth2Config
    let refreshToken = OAuth2.RefreshToken $ oauthRefreshToken oauth2Config
-   oauthTokenRslt <- OAuth2.refreshAccessToken mgr newOAuth2 refreshToken
+   oauthTokenRslt <- runExceptT $ OAuth2.refreshAccessToken mgr newOAuth2 refreshToken
    case oauthTokenRslt of
      Left e       -> fail $ show e
      Right tok  -> do
@@ -147,11 +147,11 @@ readOAuth2ConfigFromFile = decodeFileEither
 
 makeOAuth2 :: OAuth2Config -> OAuth2.OAuth2
 makeOAuth2 config = OAuth2.OAuth2 {
-    OAuth2.oauthClientId            = (oauthClientId config)
-  , OAuth2.oauthClientSecret        = Just (oauthClientSecret config)
-  , OAuth2.oauthOAuthorizeEndpoint  = [uri|https://appcenter.intuit.com/connect/obbauth2|]
-  , OAuth2.oauthAccessTokenEndpoint = [uri|https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer|]
-  , OAuth2.oauthCallback            =  Just [uri|https://developer.intuit.com/v2/OAuth2Playground/RedirectUrl|]
+    OAuth2.oauth2ClientId            = oauthClientId config
+  , OAuth2.oauth2ClientSecret        = oauthClientSecret config
+  , OAuth2.oauth2AuthorizeEndpoint   = [uri|https://appcenter.intuit.com/connect/obbauth2|]
+  , OAuth2.oauth2TokenEndpoint       = [uri|https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer|]
+  , OAuth2.oauth2RedirectUri         = [uri|https://developer.intuit.com/v2/OAuth2Playground/RedirectUrl|]
   }
 
 -- testOAuth2 :: OAuth2.OAuth2
@@ -177,9 +177,9 @@ quickbooksAuthRequest oauth = do
 
   where
     parameters = [
-       ("client_id"    , Just $ encodeUtf8 . OAuth2.oauthClientId $ oauth )
+       ("client_id"    , Just $ encodeUtf8 . OAuth2.oauth2ClientId $ oauth )
       ,("scope"        , Just ".intuit.quickbooks.accounting openid email profile")
-      ,("redirect_uri" , fmap serializeURIRef' . OAuth2.oauthCallback $ oauth)
+      ,("redirect_uri" , Just $ serializeURIRef' $ OAuth2.oauth2RedirectUri oauth)
       ,("response_type", Just "code")
       ,("state"        , Just "PlaygroundAuth")]
 

@@ -151,78 +151,6 @@ data instance QuickBooksResponse [Category] =
 data instance QuickBooksResponse Int =
   QuickBooksCountResponse { quickBooksCountResponse :: Int}
 
-instance FromJSON (QuickBooksResponse Int) where
-  parseJSON (Object o) = parseQueryResponse o
-    where
-      parseQueryResponse obj = do
-        qResponse <- obj .: "QueryResponse"
-        parseInt qResponse <|> (return $ QuickBooksCountResponse (-1))
-      parseInt obj = QuickBooksCountResponse <$> obj .: "totalCount"
-  parseJSON _          = fail "Could not parse count response from QuickBooks"
-
-instance FromJSON (QuickBooksResponse Invoice) where
-  parseJSON (Object o) = QuickBooksInvoiceResponse `fmap` (o .: "Invoice")
-  parseJSON _          = fail "Could not parse invoice response from QuickBooks"
-
-
-instance FromJSON (QuickBooksResponse DeletedInvoice) where
-  parseJSON (Object o) = QuickBooksDeletedInvoiceResponse `fmap` (o .: "Invoice")
-  parseJSON _          = fail "Could not parse deleted invoice response from QuickBooks"
-
-instance FromJSON (QuickBooksResponse [Customer]) where
-  parseJSON (Object o) = parseQueryResponse o <|> parseCustomers o <|> parseSingleCustomer o
-    where
-      parseQueryResponse obj = do
-        qResponse <- obj .: "QueryResponse"
-        parseCustomers qResponse <|> (return (QuickBooksCustomerResponse []))
-      parseCustomers obj = QuickBooksCustomerResponse <$> obj .: "Customer"
-      parseSingleCustomer obj = do
-        i <- obj .: "Customer"
-        return $ QuickBooksCustomerResponse [i]
-  parseJSON _          = fail "Could not parse customer response from QuickBooks"
-
-instance FromJSON (QuickBooksResponse [Item]) where
-  parseJSON (Object o) = parseQueryResponse o <|> parseItems o <|> parseSingleItem o
-    where
-      parseQueryResponse obj = do
-        qResponse <- obj .: "QueryResponse"
-        parseItems qResponse <|> (return (QuickBooksItemResponse []))
-      parseItems obj = QuickBooksItemResponse <$> obj .: "Item"
-      parseSingleItem obj = do
-        i <- obj .: "Item"
-        return $ QuickBooksItemResponse [i]
-  parseJSON _          = fail "Could not parse item response from QuickBooks"
-
--- Bundles still have an Item response from the QB API
-instance FromJSON (QuickBooksResponse [Bundle]) where
-  parseJSON (Object o) = parseQueryResponse o <|> parseBundles o <|> parseSingleBundle o
-    where
-      parseQueryResponse obj = do
-        qResponse <- obj .: "QueryResponse"
-        parseBundles qResponse <|> (return (QuickBooksBundleResponse []))
-      parseBundles obj = QuickBooksBundleResponse <$> obj .: "Item"
-      parseSingleBundle obj = do
-        i <- obj .: "Item"
-        return $ QuickBooksBundleResponse [i]
-  parseJSON _          = fail "Could not parse bundle response from QuickBooks"
-
--- Categories still have an Item response from the QB API
-instance FromJSON (QuickBooksResponse [Category]) where
-  parseJSON (Object o) = parseQueryResponse o <|> parseCategories o <|> parseSingleCategory o
-    where
-      parseQueryResponse obj = do
-        qResponse <- obj .: "QueryResponse"
-        parseCategories qResponse <|> (return (QuickBooksCategoryResponse []))
-      parseCategories obj = QuickBooksCategoryResponse <$> obj .: "Item"
-      parseSingleCategory obj = do
-        i <- obj .: "Item"
-        return $ QuickBooksCategoryResponse [i]
-  parseJSON _          = fail "Could not parse category response from QuickBooks"
-
-instance FromJSON (QuickBooksResponse DeletedCategory) where
-  parseJSON (Object o) = QuickBooksDeletedCategoryResponse `fmap` (o .: "Item")
-  parseJSON _          = fail "Could not parse deleted category response from QuickBooks"
-
 
 type QuickBooksQuery a = QuickBooksRequest (QuickBooksResponse a)
 type QuickBooksOAuthQuery a = QuickBooksOAuthRequest (QuickBooksResponse a)
@@ -777,136 +705,210 @@ data DeletedCategory = DeletedCategory
   , deletedCategorystatus :: !Text
   } deriving (Show, Eq, Ord)
 
-$(deriveJSON defaultOptions
+fmap mconcat $ sequence
+  [(deriveJSON defaultOptions
                { fieldLabelModifier = drop 8
                , omitNothingFields  = True
                }
              ''Customer)
 
-$(deriveJSON defaultOptions
+  ,(deriveJSON defaultOptions
                { fieldLabelModifier = drop 16
                }
              ''CustomerResponse)
 
-$(deriveJSON defaultOptions
+  ,(deriveJSON defaultOptions
                { fieldLabelModifier = drop 4
                , omitNothingFields  = True
                }
              ''Item)
 
-$(deriveJSON defaultOptions
+  ,(deriveJSON defaultOptions
                { fieldLabelModifier = drop 6
                , omitNothingFields  = True
                }
              ''Bundle)
 
-$(deriveJSON defaultOptions
+  ,(deriveJSON defaultOptions
                { fieldLabelModifier = drop 8
                , omitNothingFields  = True
                }
              ''Category)
 
-$(deriveJSON defaultOptions
+  ,(deriveJSON defaultOptions
                { fieldLabelModifier = drop 12
                }
              ''ItemResponse)
 
-$(deriveJSON defaultOptions
+  ,(deriveJSON defaultOptions
                { fieldLabelModifier = drop 15
                }
              ''TelephoneNumber)
 
-$(deriveJSON defaultOptions
+  ,(deriveJSON defaultOptions
                { fieldLabelModifier = drop 14
                }
              ''WebSiteAddress)
 
-$(deriveJSON defaultOptions
+  ,(deriveJSON defaultOptions
                { fieldLabelModifier = drop 11
                , omitNothingFields  = True }
              ''CustomField)
 
-$(deriveJSON defaultOptions
+  ,(deriveJSON defaultOptions
              ''CustomFieldType)
 
-$(deriveJSON defaultOptions
+  ,(deriveJSON defaultOptions
                { fieldLabelModifier = drop 12 }
              ''DeliveryInfo)
 
-$(deriveJSON defaultOptions
+  ,(deriveJSON defaultOptions
                { fieldLabelModifier = drop 21
                , omitNothingFields  = True }
              ''DescriptionLineDetail)
 
-$(deriveJSON defaultOptions
+  ,(deriveJSON defaultOptions
                { fieldLabelModifier = drop 18
                , omitNothingFields  = True }
              ''DiscountLineDetail)
 
-$(deriveJSON defaultOptions
+  ,(deriveJSON defaultOptions
                { fieldLabelModifier = drop 5 }
              ''EmailAddress)
 
-$(deriveJSON defaultOptions
+  ,(deriveJSON defaultOptions
              ''GlobalTaxModel)
 
-$(deriveJSON defaultOptions
+  ,(deriveJSON defaultOptions
                { fieldLabelModifier = drop 7
                , omitNothingFields  = True }
              ''Invoice)
 
-$(deriveJSON defaultOptions
+  ,(deriveJSON defaultOptions
                { fieldLabelModifier = drop 15 }
              ''InvoiceResponse)
 
-$(deriveJSON defaultOptions
+  ,(deriveJSON defaultOptions
                { fieldLabelModifier = drop 4 }
              ''Line)
 
-$(deriveJSON defaultOptions
+  ,(deriveJSON defaultOptions
                { fieldLabelModifier = drop 6
                , omitNothingFields  = True }
              ''LinkedTxn)
 
-$(deriveJSON defaultOptions
+  ,(deriveJSON defaultOptions
                { fieldLabelModifier = drop 20 }
              ''ModificationMetaData)
 
-$(deriveJSON defaultOptions
+  ,(deriveJSON defaultOptions
                { fieldLabelModifier = drop 15 }
              ''PhysicalAddress)
 
-$(deriveJSON defaultOptions
+  ,(deriveJSON defaultOptions
                { fieldLabelModifier = map toLower . drop 9
                , omitNothingFields  = True }
              ''Reference)
 
-$(deriveJSON defaultOptions
+  ,(deriveJSON defaultOptions
                { fieldLabelModifier = drop 19
                , omitNothingFields  = True }
              ''SalesItemLineDetail)
 
-$(deriveJSON defaultOptions
+  ,(deriveJSON defaultOptions
                { fieldLabelModifier = drop 18
                , omitNothingFields  = True }
              ''SubTotalLineDetail)
 
-$(deriveJSON defaultOptions
+  ,(deriveJSON defaultOptions
                { fieldLabelModifier = drop 12 }
              ''TxnTaxDetail)
 
-$(deriveJSON defaultOptions
+  ,(deriveJSON defaultOptions
                { fieldLabelModifier = drop (length ("itemGroupDetail" :: String)) }
              ''ItemGroupDetail)
 
-$(deriveJSON defaultOptions
+  ,(deriveJSON defaultOptions
                { fieldLabelModifier = drop (length ("itemGroupLine" :: String)) }
              ''ItemGroupLine)
 
-$(deriveJSON defaultOptions
+  ,(deriveJSON defaultOptions
                { fieldLabelModifier = drop (length ("deletedInvoice" :: String)) }
              ''DeletedInvoice)
 
-$(deriveJSON defaultOptions
+  ,(deriveJSON defaultOptions
                { fieldLabelModifier = drop (length ("deletedCategory" :: String)) }
              ''DeletedCategory)
+  ]
+
+instance FromJSON (QuickBooksResponse Int) where
+  parseJSON (Object o) = parseQueryResponse o
+    where
+      parseQueryResponse obj = do
+        qResponse <- obj .: "QueryResponse"
+        parseInt qResponse <|> (return $ QuickBooksCountResponse (-1))
+      parseInt obj = QuickBooksCountResponse <$> obj .: "totalCount"
+  parseJSON _          = fail "Could not parse count response from QuickBooks"
+
+instance FromJSON (QuickBooksResponse Invoice) where
+  parseJSON (Object o) = QuickBooksInvoiceResponse `fmap` (o .: "Invoice")
+  parseJSON _          = fail "Could not parse invoice response from QuickBooks"
+
+
+instance FromJSON (QuickBooksResponse DeletedInvoice) where
+  parseJSON (Object o) = QuickBooksDeletedInvoiceResponse `fmap` (o .: "Invoice")
+  parseJSON _          = fail "Could not parse deleted invoice response from QuickBooks"
+
+instance FromJSON (QuickBooksResponse [Customer]) where
+  parseJSON (Object o) = parseQueryResponse o <|> parseCustomers o <|> parseSingleCustomer o
+    where
+      parseQueryResponse obj = do
+        qResponse <- obj .: "QueryResponse"
+        parseCustomers qResponse <|> (return (QuickBooksCustomerResponse []))
+      parseCustomers obj = QuickBooksCustomerResponse <$> obj .: "Customer"
+      parseSingleCustomer obj = do
+        i <- obj .: "Customer"
+        return $ QuickBooksCustomerResponse [i]
+  parseJSON _          = fail "Could not parse customer response from QuickBooks"
+
+instance FromJSON (QuickBooksResponse [Item]) where
+  parseJSON (Object o) = parseQueryResponse o <|> parseItems o <|> parseSingleItem o
+    where
+      parseQueryResponse obj = do
+        qResponse <- obj .: "QueryResponse"
+        parseItems qResponse <|> (return (QuickBooksItemResponse []))
+      parseItems obj = QuickBooksItemResponse <$> obj .: "Item"
+      parseSingleItem obj = do
+        i <- obj .: "Item"
+        return $ QuickBooksItemResponse [i]
+  parseJSON _          = fail "Could not parse item response from QuickBooks"
+
+-- Bundles still have an Item response from the QB API
+instance FromJSON (QuickBooksResponse [Bundle]) where
+  parseJSON (Object o) = parseQueryResponse o <|> parseBundles o <|> parseSingleBundle o
+    where
+      parseQueryResponse obj = do
+        qResponse <- obj .: "QueryResponse"
+        parseBundles qResponse <|> (return (QuickBooksBundleResponse []))
+      parseBundles obj = QuickBooksBundleResponse <$> obj .: "Item"
+      parseSingleBundle obj = do
+        i <- obj .: "Item"
+        return $ QuickBooksBundleResponse [i]
+  parseJSON _          = fail "Could not parse bundle response from QuickBooks"
+
+-- Categories still have an Item response from the QB API
+instance FromJSON (QuickBooksResponse [Category]) where
+  parseJSON (Object o) = parseQueryResponse o <|> parseCategories o <|> parseSingleCategory o
+    where
+      parseQueryResponse obj = do
+        qResponse <- obj .: "QueryResponse"
+        parseCategories qResponse <|> (return (QuickBooksCategoryResponse []))
+      parseCategories obj = QuickBooksCategoryResponse <$> obj .: "Item"
+      parseSingleCategory obj = do
+        i <- obj .: "Item"
+        return $ QuickBooksCategoryResponse [i]
+  parseJSON _          = fail "Could not parse category response from QuickBooks"
+
+instance FromJSON (QuickBooksResponse DeletedCategory) where
+  parseJSON (Object o) = QuickBooksDeletedCategoryResponse `fmap` (o .: "Item")
+  parseJSON _          = fail "Could not parse deleted category response from QuickBooks"

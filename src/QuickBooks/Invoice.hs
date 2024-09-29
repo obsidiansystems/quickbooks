@@ -37,6 +37,7 @@ import qualified Text.Email.Validate       as Email (EmailAddress, toByteString)
 
 import           Data.ByteString.Char8
 import qualified Data.ByteString.Lazy
+import qualified Data.ByteString.Lazy.Char8
 import           Data.Aeson                (encode, eitherDecode, object, Value(String), ToJSON (..), FromJSON, (.=), (.:), (.:?))
 import           Data.Aeson.Types (parseEither, withObject)
 import           Data.String.Interpolate   (i)
@@ -120,7 +121,7 @@ readInvoiceRequestOAuth2 tok iId = do
       case eitherResponse of
         (Left err) -> return (Left . show $ err)
         (Right resp) -> do
-          Data.ByteString.Lazy.putStrLn resp
+          Data.ByteString.Lazy.Char8.putStrLn resp
           return $ eitherDecode resp
 
 

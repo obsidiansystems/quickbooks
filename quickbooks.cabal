@@ -79,7 +79,7 @@ library
                          -- is fixed.
                        , aeson
                        , containers
-                       , hoauth2 >= 1.16.0 && < 2
+                       , hoauth2 >= 2
                        , authenticate-oauth
                        , bytestring
                        , http-client
@@ -95,6 +95,7 @@ library
                        , old-locale
                        , email-validate
                        , yaml
+                       , mtl
 
 test-suite api-tests
   type:             exitcode-stdio-1.0
