@@ -79,7 +79,7 @@ library
                          -- is fixed.
                        , aeson
                        , containers
-                       , hoauth2 >= 1.16.0
+                       , hoauth2 >= 1.16.0 && < 2
                        , authenticate-oauth
                        , bytestring
                        , http-client
